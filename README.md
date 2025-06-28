@@ -1,5 +1,7 @@
 # AI Mind Map
 
+![Screenshot](doc/Screenshot_fm-mindmap_20250628.png)
+
 AIとの対話を通じてアイデアを広げ、思考を整理するためのインテリジェント・マインドマッピングツールです。
 
 Dyad + gemini 2.5 pro で作成しました。

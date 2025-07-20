@@ -1,11 +1,13 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, X, User, Bot, Loader2 } from 'lucide-react';
+import { Send, X, User, Bot, Loader2, Sparkles } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { useState, useRef, useEffect } from 'react';
+import { fetchLLMResponse } from '@/lib/api';
+import { showError } from '@/utils/toast';
 
 interface ChatSidebarProps {
   onClose: () => void;
@@ -15,9 +17,11 @@ export function ChatSidebar({ onClose }: ChatSidebarProps) {
   const chatHistory = useStore((state) => state.chatHistory);
   const chatAndCreateNode = useStore((state) => state.chatAndCreateNode);
   const selectedNodeId = useStore((state) => state.selectedNodeId);
+  const getContext = useStore((state) => state.getContext);
 
   const [inputValue, setInputValue] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [isRefining, setIsRefining] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -26,9 +30,8 @@ export function ChatSidebar({ onClose }: ChatSidebarProps) {
     }
   }, [chatHistory]);
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputValue.trim() || !selectedNodeId || isSending) return;
+  const submitMessage = async () => {
+    if (!inputValue.trim() || !selectedNodeId || isSending || isRefining) return;
 
     setIsSending(true);
     try {
@@ -36,6 +39,44 @@ export function ChatSidebar({ onClose }: ChatSidebarProps) {
       setInputValue('');
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    submitMessage();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        submitMessage();
+      } else {
+        e.preventDefault(); // Prevent form submission on Enter alone
+      }
+    }
+  };
+
+  const handleRefine = async () => {
+    if (!inputValue.trim() || !selectedNodeId || isSending || isRefining) return;
+
+    setIsRefining(true);
+    try {
+      const context = getContext(selectedNodeId, true);
+      const prompt = `You are an assistant that refines user input for a chat. Correct any typos and grammatical errors, and clarify the language in the following text, based on the provided chat context. Preserve the original meaning and intent. Output only the refined text, without any extra formatting, explanations, or quotation marks.
+
+Chat Context:
+${context.map(m => `${m.role}: ${m.content}`).join('\n\n')}
+
+Text to refine: "${inputValue}"`;
+
+      const refinedText = await fetchLLMResponse([{ role: 'user', content: prompt }]);
+      setInputValue(refinedText.trim().replace(/^"|"$/g, ''));
+    } catch (error) {
+      showError("Failed to refine text.");
+    } finally {
+      setIsRefining(false);
     }
   };
 
@@ -93,15 +134,19 @@ export function ChatSidebar({ onClose }: ChatSidebarProps) {
         </div>
       </ScrollArea>
 
-      <form onSubmit={handleSendMessage} className="mt-4 pt-4 border-t space-y-2 flex-shrink-0">
+      <form onSubmit={handleFormSubmit} className="mt-4 pt-4 border-t flex-shrink-0">
         <div className="flex gap-2">
           <Input
             placeholder={selectedNodeId ? "Ask a question..." : "Select a node to chat"}
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            disabled={!selectedNodeId || isSending}
+            onKeyDown={handleKeyDown}
+            disabled={!selectedNodeId || isSending || isRefining}
           />
-          <Button type="submit" disabled={!inputValue.trim() || !selectedNodeId || isSending}>
+          <Button type="button" variant="outline" size="icon" onClick={handleRefine} disabled={!inputValue.trim() || !selectedNodeId || isSending || isRefining} title="Refine message">
+            {isRefining ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+          </Button>
+          <Button type="submit" size="icon" disabled={!inputValue.trim() || !selectedNodeId || isSending || isRefining} title="Send message">
             {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </div>

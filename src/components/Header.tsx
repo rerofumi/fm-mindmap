@@ -75,7 +75,7 @@ export function Header() {
           <MessageSquare className="mr-2 h-4 w-4" /> Chat
         </Button>
         <div className="w-px bg-border h-6 mx-2" />
-        <h1 className="text-xl font-bold mr-4">fumi2kick Mind Map</h1>
+        <h1 className="text-xl font-bold mr-4">Mind Map</h1>
         <Button onClick={addRootNode} size="sm">
           <Plus className="mr-2 h-4 w-4" /> Root Node
         </Button>

@@ -1,11 +1,14 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, Loader2, User, Bot, Sparkles, MessageSquarePlus } from 'lucide-react';
+import { Send, Loader2, User, Bot, Sparkles, MessageSquarePlus, Wand2 } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { useState, useRef, useEffect } from 'react';
+import { fetchLLMResponse } from '@/lib/api';
+import { showError } from '@/utils/toast';
+import { TEXT_REFINEMENT_PROMPT } from '@/lib/prompts';
 
 export function ChatView() {
   const standaloneChatHistory = useStore((state) => state.standaloneChatHistory);
@@ -16,6 +19,7 @@ export function ChatView() {
   const isMindmapGenerating = useStore((state) => state.isMindmapGenerating);
 
   const [inputValue, setInputValue] = useState('');
+  const [isRefining, setIsRefining] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -32,9 +36,13 @@ export function ChatView() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit(e as any);
+    if (e.key === 'Enter') {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        handleSubmit(e as any);
+      } else {
+        e.preventDefault(); // Prevent form submission on Enter alone
+      }
     }
   };
 
@@ -42,6 +50,21 @@ export function ChatView() {
     if (standaloneChatHistory.length === 0) return;
     if (window.confirm('Clear chat history? This action cannot be undone.')) {
       clearStandaloneChat();
+    }
+  };
+
+  const handleRefine = async () => {
+    if (!inputValue.trim() || isStandaloneChatLoading || isMindmapGenerating || isRefining) return;
+    
+    setIsRefining(true);
+    try {
+      const prompt = TEXT_REFINEMENT_PROMPT(standaloneChatHistory, inputValue);
+      const refinedText = await fetchLLMResponse([{ role: 'user', content: prompt }]);
+      setInputValue(refinedText.trim().replace(/^\"|\"$/g, ''));
+    } catch (error) {
+      showError("Failed to refine text.");
+    } finally {
+      setIsRefining(false);
     }
   };
 
@@ -136,17 +159,21 @@ export function ChatView() {
         <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
           <div className="flex gap-2">
             <Input
-              placeholder="Type your message..."
+              placeholder="Type your message... (Ctrl+Enter to send)"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
               disabled={isStandaloneChatLoading || isMindmapGenerating}
               className="flex-grow"
             />
+            <Button type="button" variant="outline" size="icon" onClick={handleRefine} disabled={!inputValue.trim() || isStandaloneChatLoading || isMindmapGenerating || isRefining} title="Refine message">
+              {isRefining ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+            </Button>
             <Button
               type="submit"
               size="icon"
               disabled={!inputValue.trim() || isStandaloneChatLoading || isMindmapGenerating}
+              title="Send message (Ctrl+Enter)"
             >
               {isStandaloneChatLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />

@@ -18,12 +18,12 @@ export const TITLE_SUMMARIZATION_PROMPT = 'Summarize the following question and 
 export const ASSOCIATION_GENERATION_PROMPT_TEMPLATE = '「{title}」という単語から連想される、関連性の高い単語を4つ、日本語で、カンマ(,)区切りで出力してください。例: りんご,ゴリラ,ラッパ,パセリ。余計な説明や番号付けは不要です。';
 
 // テキスト改善プロンプト
-export const TEXT_REFINEMENT_PROMPT = (context: ChatMessage[], text: string) => `You are an assistant that refines user input for a chat. Correct any typos and grammatical errors, and clarify the language in the following text, based on the provided chat context. Preserve the original meaning and intent. Output only the refined text, without any extra formatting, explanations, or quotation marks.
+export const TEXT_REFINEMENT_PROMPT = (context: ChatMessage[], text: string) => `あなたはチャット用の入力文を改善するアシスタントです。以下のテキストについて、誤字脱字や文法の誤りを直し、より明瞭で自然な表現に整えてください。与えられたチャット文脈も参考にしてください。原意は厳密に保持してください。出力は日本語のテキストのみを返し、余計な説明や装飾、引用符は一切含めないでください。
 
-Chat Context:
+チャット文脈:
 ${context.map(m => `${m.role}: ${m.content}`).join('\n\n')}
 
-Text to refine: "${text}"`;
+改善対象テキスト: "${text}"`;
 
 // マインドマップ生成用のシステムプロンプト
 export const MINDMAP_GENERATION_SYSTEM_PROMPT = 'You are an assistant that converts a chat conversation into a mind map structure. You MUST return ONLY valid JSON. Do not include any explanation, markdown formatting, or additional text before or after the JSON.';

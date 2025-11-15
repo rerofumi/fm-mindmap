@@ -1,15 +1,32 @@
 import { create } from 'zustand';
 import { nanoid } from 'nanoid';
-import { MindMapNode, MindMapNodeData, MindMapEdge, ChatMessage } from '@/types';
+import { MindMapNode, MindMapNodeData, MindMapEdge, ChatMessage, ViewMode } from '@/types';
 import { showSuccess, showError } from '@/utils/toast';
-import { fetchLLMResponse } from './api';
+import { fetchLLMResponse, generateMindmapFromChat } from './api';
 
 interface RFState {
+  // Mindmap state
   nodes: MindMapNode[];
   edges: MindMapEdge[];
   selectedNodeId: string | null;
+
+  // View state
+  viewMode: ViewMode;
+  setViewMode: (mode: ViewMode) => void;
+
+  // In-mindmap chat sidebar
   isChatSidebarOpen: boolean;
   chatHistory: ChatMessage[];
+
+  // Standalone chat mode
+  standaloneChatHistory: ChatMessage[];
+  isStandaloneChatLoading: boolean;
+  isMindmapGenerating: boolean;
+  clearStandaloneChat: () => void;
+  sendStandaloneMessage: (content: string) => Promise<void>;
+  generateMindmapFromStandaloneChat: () => Promise<void>;
+
+  // Actions
   setSelectedNodeId: (id: string | null) => void;
   toggleChatSidebar: () => void;
   addRootNode: () => void;
@@ -31,8 +48,86 @@ export const useStore = create<RFState>((set, get) => ({
   nodes: [],
   edges: [],
   selectedNodeId: null,
+
+  // View state
+  viewMode: 'mindmap',
+  setViewMode: (mode) => set({ viewMode: mode }),
+
+  // In-mindmap chat sidebar
   isChatSidebarOpen: false,
   chatHistory: [],
+
+  // Standalone chat
+  standaloneChatHistory: [],
+  isStandaloneChatLoading: false,
+  isMindmapGenerating: false,
+  clearStandaloneChat: () => set({ standaloneChatHistory: [] }),
+  sendStandaloneMessage: async (content: string) => {
+    const trimmed = content.trim();
+    if (!trimmed) return;
+    const userMsg: ChatMessage = { role: 'user', content: trimmed };
+    const current = get().standaloneChatHistory;
+    set({ standaloneChatHistory: [...current, userMsg], isStandaloneChatLoading: true });
+    try {
+      const messages = [...current, userMsg].map(m => ({ role: m.role, content: m.content }));
+      const answer = await fetchLLMResponse(messages as any);
+      const assistantMsg: ChatMessage = { role: 'assistant', content: answer };
+      set((s) => ({ standaloneChatHistory: [...s.standaloneChatHistory, assistantMsg] }));
+    } catch (e) {
+      showError('Failed to send message.');
+    } finally {
+      set({ isStandaloneChatLoading: false });
+    }
+  },
+  generateMindmapFromStandaloneChat: async () => {
+    const history = get().standaloneChatHistory;
+    if (!history.length) {
+      showError('Chat is empty. Send a message first.');
+      return;
+    }
+    set({ isMindmapGenerating: true });
+    try {
+      const result = await generateMindmapFromChat(history);
+      const idSet = new Set(result.nodes.map(n => n.id));
+      // Build maps for quick lookup
+      const nodeMap = new Map(result.nodes.map(n => [n.id, n] as const));
+      // Determine roots (nodes that are not targets)
+      const targets = new Set(result.edges.map(e => e.target));
+      const roots = result.nodes.filter(n => !targets.has(n.id));
+      // Create MindMapNode objects
+      const nodes: MindMapNode[] = result.nodes.map((n, idx) => ({
+        id: String(n.id),
+        type: roots.some(r => r.id === n.id) ? 'root' : 'normal',
+        position: { x: 0, y: idx * 80 },
+        data: {
+          title: n.title,
+          color: n.color || '#94a3b8',
+          isRoot: roots.some(r => r.id === n.id),
+          question: '',
+          answer: '',
+          memo: '',
+        },
+      }));
+      // Create edges
+      const edges: MindMapEdge[] = result.edges
+        .filter(e => idSet.has(e.source) && idSet.has(e.target))
+        .map(e => ({
+          id: `e-${e.source}-${e.target}`,
+          source: String(e.source),
+          target: String(e.target),
+          style: { stroke: (nodeMap.get(e.target)?.color) || '#94a3b8', strokeWidth: 2 },
+        }));
+
+      set({ nodes, edges });
+      get().alignNodes();
+      set({ viewMode: 'mindmap' });
+      showSuccess('Mind map generated from chat.');
+    } catch (e: any) {
+      showError(e?.message || 'Failed to generate mind map.');
+    } finally {
+      set({ isMindmapGenerating: false });
+    }
+  },
 
   setSelectedNodeId: (id) => {
     if (id) {

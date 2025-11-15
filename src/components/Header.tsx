@@ -26,6 +26,8 @@ export function Header() {
   const edges = useStore((state) => state.edges);
   const loadState = useStore((state) => state.loadState);
   const toggleChatSidebar = useStore((state) => state.toggleChatSidebar);
+  const viewMode = useStore((state) => state.viewMode);
+  const setViewMode = useStore((state) => state.setViewMode);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
@@ -71,8 +73,21 @@ export function Header() {
   return (
     <>
       <header className="p-2 border-b flex items-center gap-2 bg-background z-10 flex-wrap">
+        <div role="tablist" className="flex items-center gap-1">
+          <Button role="tab" aria-selected={viewMode === 'mindmap'}
+            size="sm"
+            variant={viewMode === 'mindmap' ? 'secondary' : 'ghost'}
+            onClick={() => setViewMode('mindmap')}
+          >Mindmap</Button>
+          <Button role="tab" aria-selected={viewMode === 'chat'}
+            size="sm"
+            variant={viewMode === 'chat' ? 'secondary' : 'ghost'}
+            onClick={() => setViewMode('chat')}
+          >Chat</Button>
+        </div>
+        <div className="w-px bg-border h-6 mx-2" />
         <Button onClick={toggleChatSidebar} size="sm" variant="outline">
-          <MessageSquare className="mr-2 h-4 w-4" /> Chat
+          <MessageSquare className="mr-2 h-4 w-4" /> Chat Sidebar
         </Button>
         <div className="w-px bg-border h-6 mx-2" />
         <h1 className="text-xl font-bold mr-4">Mind Map</h1>

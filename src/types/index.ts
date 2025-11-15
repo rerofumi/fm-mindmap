@@ -1,5 +1,7 @@
 import type { Node, Edge } from 'reactflow';
 
+export type ViewMode = 'mindmap' | 'chat';
+
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;

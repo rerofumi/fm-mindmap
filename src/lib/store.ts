@@ -3,6 +3,7 @@ import { nanoid } from 'nanoid';
 import { MindMapNode, MindMapNodeData, MindMapEdge, ChatMessage, ViewMode } from '@/types';
 import { showSuccess, showError } from '@/utils/toast';
 import { fetchLLMResponse, generateMindmapFromChat } from './api';
+import { CHAT_RESPONSE_SYSTEM_PROMPT, createTitleSummarizationPrompt } from './prompts';
 
 interface RFState {
   // Mindmap state
@@ -505,7 +506,11 @@ export const useStore = create<RFState>((set, get) => ({
     try {
       // 2. Fetch LLM response
       const context = state.getContext(parentId, true);
-      const messages = [...context, userMessage];
+      const messages = [
+        { role: 'system' as const, content: CHAT_RESPONSE_SYSTEM_PROMPT },
+        ...context,
+        userMessage
+      ];
       const answer = await fetchLLMResponse(messages);
 
       // 3. Add LLM response to chat history
@@ -540,7 +545,7 @@ export const useStore = create<RFState>((set, get) => ({
       };
 
       // 6. Summarize to title
-      const titlePrompt = `Summarize the following question and answer into a short, concise title (around 10-15 characters). Output only the title text.\n\nQuestion: ${question}\n\nAnswer: ${answer}`;
+      const titlePrompt = createTitleSummarizationPrompt(question, answer);
       const summarizedTitle = await fetchLLMResponse([{ role: 'user', content: titlePrompt }]);
       
       let newTitle = summarizedTitle.trim().replace(/^"|"$/g, '');

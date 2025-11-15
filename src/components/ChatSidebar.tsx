@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { useState, useRef, useEffect } from 'react';
 import { fetchLLMResponse } from '@/lib/api';
 import { showError } from '@/utils/toast';
+import { TEXT_REFINEMENT_PROMPT } from '@/lib/prompts';
 
 interface ChatSidebarProps {
   onClose: () => void;
@@ -64,12 +65,7 @@ export function ChatSidebar({ onClose }: ChatSidebarProps) {
     setIsRefining(true);
     try {
       const context = getContext(selectedNodeId, true);
-      const prompt = `You are an assistant that refines user input for a chat. Correct any typos and grammatical errors, and clarify the language in the following text, based on the provided chat context. Preserve the original meaning and intent. Output only the refined text, without any extra formatting, explanations, or quotation marks.
-
-Chat Context:
-${context.map(m => `${m.role}: ${m.content}`).join('\n\n')}
-
-Text to refine: "${inputValue}"`;
+      const prompt = TEXT_REFINEMENT_PROMPT(context, inputValue);
 
       const refinedText = await fetchLLMResponse([{ role: 'user', content: prompt }]);
       setInputValue(refinedText.trim().replace(/^"|"$/g, ''));
@@ -83,7 +79,7 @@ Text to refine: "${inputValue}"`;
   return (
     <aside className="w-96 bg-gray-50 p-4 border-r border-gray-200 dark:bg-gray-900 dark:border-gray-800 flex-shrink-0 flex flex-col">
       <div className="flex justify-between items-center mb-4 flex-shrink-0">
-        <h3 className="text-lg font-semibold">Chat History</h3>
+        <h3 className="text-lg font-semibold">Context History</h3>
         <Button variant="ghost" size="icon" onClick={onClose}>
           <X className="h-4 w-4" />
         </Button>
@@ -137,7 +133,7 @@ Text to refine: "${inputValue}"`;
       <form onSubmit={handleFormSubmit} className="mt-4 pt-4 border-t flex-shrink-0">
         <div className="flex gap-2">
           <Input
-            placeholder={selectedNodeId ? "Ask a question..." : "Select a node to chat"}
+            placeholder={selectedNodeId ? "Ask a question..." : "Select a node for context"}
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}

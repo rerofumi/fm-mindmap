@@ -1,10 +1,10 @@
 import { showError } from '@/utils/toast';
 import type { ChatMessage } from '@/types';
+import { SUMMARIZE_PROMPT, MINDMAP_GENERATION_SYSTEM_PROMPT, MINDMAP_GENERATION_INSTRUCTION } from './prompts';
 
 const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
 const MODEL = import.meta.env.VITE_OPENROUTER_MODEL || 'openai/gpt-3.5-turbo';
-export const SUMMARIZE_PROMPT = import.meta.env.VITE_SUMMARIZE_PROMPT || 'Please summarize this conversation concisely in Markdown format.';
 
 interface Message {
   role: 'user' | 'assistant' | 'system';
@@ -51,13 +51,16 @@ export const fetchLLMResponse = async (messages: Message[]): Promise<string> => 
 
 // Generate a mindmap JSON from a standalone chat history using the LLM
 export const generateMindmapFromChat = async (history: ChatMessage[]): Promise<{ nodes: Array<{ id: string; title: string; color?: string }>; edges: Array<{ source: string; target: string }> }> => {
-  const system = 'You are an assistant that converts a chat conversation into a mind map structure. Return ONLY strict JSON with keys "nodes" and "edges". No explanation.';
-  const instruction = `Convert the following conversation into a concise mind map.\nReturn JSON only in this exact schema:\n{\n  "nodes": [ { "id": "string", "title": "string", "color": "#RRGGBB" } ],\n  "edges": [ { "source": "string", "target": "string" } ]\n}\nRules:\n- ids must be unique and referenced by edges.\n- Include 1-3 root topics and reasonable hierarchy depth.\n- Titles should be short.\n- Prefer Japanese if the conversation is in Japanese.`;
+  // Construct a single, comprehensive prompt that includes all instructions
+  const combinedPrompt = `${MINDMAP_GENERATION_SYSTEM_PROMPT}
+
+${MINDMAP_GENERATION_INSTRUCTION}
+
+Chat conversation:
+${history.map(m => `${m.role}: ${m.content}`).join('\n')}`;
 
   const messages: Message[] = [
-    { role: 'system', content: system },
-    ...history.map(m => ({ role: m.role, content: m.content }) as Message),
-    { role: 'user', content: instruction },
+    { role: 'user', content: combinedPrompt },
   ];
 
   const raw = await fetchLLMResponse(messages);
@@ -65,8 +68,10 @@ export const generateMindmapFromChat = async (history: ChatMessage[]): Promise<{
   let parsed: any;
   try {
     parsed = JSON.parse(jsonText);
-  } catch {
-    throw new Error('Failed to parse JSON from LLM response');
+  } catch (e) {
+    console.error('JSON parse error. Raw response:', raw);
+    console.error('Extracted JSON text:', jsonText);
+    throw new Error(`Failed to parse JSON from LLM response: ${e instanceof Error ? e.message : 'unknown error'}`);
   }
   if (!parsed || !Array.isArray(parsed.nodes) || !Array.isArray(parsed.edges)) {
     throw new Error('Invalid mindmap JSON format');

@@ -1,4 +1,5 @@
 import { Header } from '@/components/Header';
+import { Toolbar } from '@/components/Toolbar';
 import { MindMapCanvas } from '@/components/MindMapCanvas';
 import { Sidebar } from '@/components/Sidebar';
 import { ChatSidebar } from '@/components/ChatSidebar';
@@ -30,8 +31,11 @@ const Index = () => {
         ) : (
           <>
             {isChatSidebarOpen && <ChatSidebar onClose={toggleChatSidebar} />}
-            <div className="flex-grow h-full">
-              <MindMapCanvas />
+            <div className="flex-grow h-full flex flex-col">
+              <Toolbar />
+              <div className="flex-1 overflow-hidden">
+                <MindMapCanvas />
+              </div>
             </div>
             {selectedNodeId && <Sidebar onClose={handleCloseSidebar} />}
           </>

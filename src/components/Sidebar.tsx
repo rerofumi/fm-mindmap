@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { X, Paintbrush, Bot, BookText, Loader2, PenSquare, NotebookPen, BrainCircuit } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { showError } from '@/utils/toast';
-import { fetchLLMResponse, SUMMARIZE_PROMPT } from '@/lib/api';
+import { fetchLLMResponse } from '@/lib/api';
+import { SUMMARIZE_PROMPT, CHAT_RESPONSE_SYSTEM_PROMPT, createTitleSummarizationPrompt, createAssociationPrompt } from '@/lib/prompts';
 import { SummarizeModal } from './SummarizeModal';
 
 export function Sidebar({ onClose }: { onClose: () => void }) {
@@ -97,6 +98,7 @@ export function Sidebar({ onClose }: { onClose: () => void }) {
     try {
       const context = getContext(selectedNodeId, false);
       const messages = [
+        { role: 'system' as const, content: CHAT_RESPONSE_SYSTEM_PROMPT },
         ...context,
         { role: 'user' as const, content: question },
       ];
@@ -142,7 +144,7 @@ export function Sidebar({ onClose }: { onClose: () => void }) {
     }
     setIsSummarizingTitle(true);
     try {
-      const prompt = `Summarize the following question and answer into a short, concise title (around 10-15 characters). Output only the title text.\n\nQuestion: ${selectedNode.data.question}\n\nAnswer: ${selectedNode.data.answer}`;
+      const prompt = createTitleSummarizationPrompt(selectedNode.data.question, selectedNode.data.answer);
       
       const newTitle = await fetchLLMResponse([{ role: 'user', content: prompt }]);
       
@@ -171,7 +173,7 @@ export function Sidebar({ onClose }: { onClose: () => void }) {
     if (!selectedNode) return;
     setIsAssociating(true);
     try {
-      const prompt = `「${selectedNode.data.title}」という単語から連想される、関連性の高い単語を4つ、日本語で、カンマ(,)区切りで出力してください。例: りんご,ゴリラ,ラッパ,パセリ。余計な説明や番号付けは不要です。`;
+      const prompt = createAssociationPrompt(selectedNode.data.title);
       const response = await fetchLLMResponse([{ role: 'user', content: prompt }]);
       const newTitles = response.split(',').map(t => t.trim()).filter(t => t.length > 0);
       if (newTitles.length === 0) {

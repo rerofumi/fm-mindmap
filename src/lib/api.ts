@@ -1,17 +1,17 @@
 import { showError } from '@/utils/toast';
 import type { ChatMessage } from '@/types';
-import { SUMMARIZE_PROMPT, MINDMAP_GENERATION_SYSTEM_PROMPT, MINDMAP_GENERATION_INSTRUCTION } from './prompts';
+import { SUMMARIZE_PROMPT, MINDMAP_GENERATION_SYSTEM_PROMPT, MINDMAP_GENERATION_INSTRUCTION, TEXT_TO_MINDMAP_SYSTEM_PROMPT, TEXT_TO_MINDMAP_INSTRUCTION } from './prompts';
+import { defaultModel } from './modelConfig';
 
 const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
-const MODEL = import.meta.env.VITE_OPENROUTER_MODEL || 'openai/gpt-3.5-turbo';
 
 interface Message {
   role: 'user' | 'assistant' | 'system';
   content: string;
 }
 
-export const fetchLLMResponse = async (messages: Message[]): Promise<string> => {
+export const fetchLLMResponse = async (messages: Message[], model?: string): Promise<string> => {
   if (!API_KEY || API_KEY === "your_api_key_here") {
     const errorMessage = 'VITE_OPENROUTER_API_KEY is not set in .env file. Please set it and rebuild the app.';
     showError(errorMessage);
@@ -26,7 +26,7 @@ export const fetchLLMResponse = async (messages: Message[]): Promise<string> => 
         'Authorization': `Bearer ${API_KEY}`,
       },
       body: JSON.stringify({
-        model: MODEL,
+        model: model || import.meta.env.VITE_OPENROUTER_MODEL || defaultModel,
         messages: messages,
       }),
     });
@@ -50,7 +50,7 @@ export const fetchLLMResponse = async (messages: Message[]): Promise<string> => 
 };
 
 // Generate a mindmap JSON from a standalone chat history using the LLM
-export const generateMindmapFromChat = async (history: ChatMessage[]): Promise<{ nodes: Array<{ id: string; title: string; color?: string }>; edges: Array<{ source: string; target: string }> }> => {
+export const generateMindmapFromChat = async (history: ChatMessage[], model?: string): Promise<{ nodes: Array<{ id: string; title: string; color?: string }>; edges: Array<{ source: string; target: string }> }> => {
   // Construct a single, comprehensive prompt that includes all instructions
   const combinedPrompt = `${MINDMAP_GENERATION_SYSTEM_PROMPT}
 
@@ -63,7 +63,39 @@ ${history.map(m => `${m.role}: ${m.content}`).join('\n')}`;
     { role: 'user', content: combinedPrompt },
   ];
 
-  const raw = await fetchLLMResponse(messages);
+  const raw = await fetchLLMResponse(messages, model);
+  const jsonText = extractJsonBlock(raw);
+  let parsed: any;
+  try {
+    parsed = JSON.parse(jsonText);
+  } catch (e) {
+    console.error('JSON parse error. Raw response:', raw);
+    console.error('Extracted JSON text:', jsonText);
+    throw new Error(`Failed to parse JSON from LLM response: ${e instanceof Error ? e.message : 'unknown error'}`);
+  }
+  if (!parsed || !Array.isArray(parsed.nodes) || !Array.isArray(parsed.edges)) {
+    throw new Error('Invalid mindmap JSON format');
+  }
+  // Coerce minimal shape
+  return {
+    nodes: parsed.nodes.map((n: any) => ({ id: String(n.id), title: String(n.title), color: n.color && String(n.color) })),
+    edges: parsed.edges.map((e: any) => ({ source: String(e.source), target: String(e.target) })),
+  };
+};
+
+// Generate a mindmap JSON from arbitrary text input using the LLM
+export const generateMindmapFromText = async (text: string, model?: string): Promise<{ nodes: Array<{ id: string; title: string; color?: string }>; edges: Array<{ source: string; target: string }> }> => {
+  if (!text.trim()) {
+    throw new Error('Input text is empty');
+  }
+
+  const combinedPrompt = `${TEXT_TO_MINDMAP_SYSTEM_PROMPT}\n\n${TEXT_TO_MINDMAP_INSTRUCTION}\n\n${text}`;
+
+  const messages: Message[] = [
+    { role: 'user', content: combinedPrompt },
+  ];
+
+  const raw = await fetchLLMResponse(messages, model);
   const jsonText = extractJsonBlock(raw);
   let parsed: any;
   try {

@@ -13,7 +13,7 @@ import {
 import { useState, useEffect } from 'react';
 import { showError } from '@/utils/toast';
 import { fetchLLMResponse } from '@/lib/api';
-import { SUMMARIZE_PROMPT, CHAT_RESPONSE_SYSTEM_PROMPT, createTitleSummarizationPrompt, createAssociationPrompt } from '@/lib/prompts';
+import { SUMMARIZE_PROMPT, CHAT_RESPONSE_SYSTEM_PROMPT, createTitleSummarizationPrompt, createAssociationPromptWithContext } from '@/lib/prompts';
 import { SummarizeModal } from './SummarizeModal';
 
 export function Sidebar({ onClose }: { onClose: () => void }) {
@@ -176,10 +176,14 @@ export function Sidebar({ onClose }: { onClose: () => void }) {
   };
 
   const handleAssociateNodes = async () => {
-    if (!selectedNode) return;
+    if (!selectedNode || !selectedNodeId) return;
     setIsAssociating(true);
     try {
-      const prompt = createAssociationPrompt(selectedNode.data.title);
+      // Get the conversation context up to (but not including) the current node
+      const context = getContext(selectedNodeId, false);
+      
+      // Use context-aware prompt for better, more contextual suggestions
+      const prompt = createAssociationPromptWithContext(selectedNode.data.title, context);
       const response = await fetchLLMResponse([{ role: 'user', content: prompt }]);
       const newTitles = response.split(',').map(t => t.trim()).filter(t => t.length > 0);
       if (newTitles.length === 0) {

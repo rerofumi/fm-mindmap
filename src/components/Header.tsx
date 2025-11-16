@@ -4,6 +4,16 @@ import { MindMapNode, MindMapEdge } from '@/types';
 import { showError } from '@/utils/toast';
 import { useRef, useState } from 'react';
 import { deserializeMindMap } from '@/lib/fileUtils';
+import { availableModels } from '@/lib/modelConfig';
+import { FileText } from 'lucide-react';
+import { TextToMindmapModal } from '@/components/TextToMindmapModal';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,10 +29,13 @@ export function Header() {
   const viewMode = useStore((state) => state.viewMode);
   const setViewMode = useStore((state) => state.setViewMode);
   const loadState = useStore((state) => state.loadState);
+  const selectedModel = useStore((state) => state.selectedModel);
+  const setSelectedModel = useStore((state) => state.setSelectedModel);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [loadedData, setLoadedData] = useState<{ nodes: MindMapNode[], edges: MindMapEdge[] } | null>(null);
+  const [isTextModalOpen, setIsTextModalOpen] = useState(false);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -69,6 +82,30 @@ export function Header() {
             onClick={() => setViewMode('chat')}
           >Chat mode</Button>
         </div>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setIsTextModalOpen(true)}
+          className="flex items-center gap-2"
+        >
+          <FileText className="h-4 w-4" />
+          テキストから作成
+        </Button>
+        <div className="ml-auto flex items-center gap-2">
+          <label htmlFor="model-select" className="text-sm font-medium">Model:</label>
+          <Select value={selectedModel} onValueChange={setSelectedModel}>
+            <SelectTrigger id="model-select" className="w-[200px]">
+              <SelectValue placeholder="Select a model" />
+            </SelectTrigger>
+            <SelectContent>
+              {availableModels.map((model) => (
+                <SelectItem key={model.value} value={model.value}>
+                  {model.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <input
           type="file"
           ref={fileInputRef}
@@ -91,6 +128,10 @@ export function Header() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <TextToMindmapModal 
+        open={isTextModalOpen} 
+        onOpenChange={setIsTextModalOpen}
+      />
     </>
   );
 }

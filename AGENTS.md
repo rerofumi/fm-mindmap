@@ -151,9 +151,6 @@ Environment variables are consumed via `import.meta.env` (Vite) and documented i
 - `VITE_OPENROUTER_MODEL` (optional)
   - Also read in `src/lib/api.ts`.
   - Defaults to `openai/gpt-3.5-turbo` if not provided.
-- `VITE_SUMMARIZE_PROMPT` (optional)
-  - Read in `src/lib/api.ts` and re-exported as `SUMMARIZE_PROMPT`.
-  - Controls the instruction used when summarizing conversation history in the sidebar.
 
 These variables are expected to be set in a `.env` file at the project root (see README). Example from the README:
 

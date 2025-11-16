@@ -2,8 +2,9 @@ import { create } from 'zustand';
 import { nanoid } from 'nanoid';
 import { MindMapNode, MindMapNodeData, MindMapEdge, ChatMessage, ViewMode } from '@/types';
 import { showSuccess, showError } from '@/utils/toast';
-import { fetchLLMResponse, generateMindmapFromChat } from './api';
+import { fetchLLMResponse, generateMindmapFromChat, generateMindmapFromText } from './api';
 import { CHAT_RESPONSE_SYSTEM_PROMPT, createTitleSummarizationPrompt } from './prompts';
+import { defaultModel } from './modelConfig';
 
 interface RFState {
   // Mindmap state
@@ -14,6 +15,8 @@ interface RFState {
   // View state
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
+  selectedModel: string;
+  setSelectedModel: (model: string) => void;
 
   // In-mindmap chat sidebar
   isChatSidebarOpen: boolean;
@@ -26,6 +29,7 @@ interface RFState {
   clearStandaloneChat: () => void;
   sendStandaloneMessage: (content: string) => Promise<void>;
   generateMindmapFromStandaloneChat: () => Promise<void>;
+  generateMindmapFromTextInput: (text: string) => Promise<void>;
 
   // Actions
   setSelectedNodeId: (id: string | null) => void;
@@ -53,6 +57,8 @@ export const useStore = create<RFState>((set, get) => ({
   // View state
   viewMode: 'mindmap',
   setViewMode: (mode) => set({ viewMode: mode }),
+  selectedModel: import.meta.env.VITE_OPENROUTER_MODEL || defaultModel,
+  setSelectedModel: (model) => set({ selectedModel: model }),
 
   // In-mindmap chat sidebar
   isChatSidebarOpen: false,
@@ -68,10 +74,11 @@ export const useStore = create<RFState>((set, get) => ({
     if (!trimmed) return;
     const userMsg: ChatMessage = { role: 'user', content: trimmed };
     const current = get().standaloneChatHistory;
+    const model = get().selectedModel;
     set({ standaloneChatHistory: [...current, userMsg], isStandaloneChatLoading: true });
     try {
       const messages = [...current, userMsg].map(m => ({ role: m.role, content: m.content }));
-      const answer = await fetchLLMResponse(messages as any);
+      const answer = await fetchLLMResponse(messages as any, model);
       const assistantMsg: ChatMessage = { role: 'assistant', content: answer };
       set((s) => ({ standaloneChatHistory: [...s.standaloneChatHistory, assistantMsg] }));
     } catch (e) {
@@ -86,9 +93,10 @@ export const useStore = create<RFState>((set, get) => ({
       showError('Chat is empty. Send a message first.');
       return;
     }
+    const model = get().selectedModel;
     set({ isMindmapGenerating: true });
     try {
-      const result = await generateMindmapFromChat(history);
+      const result = await generateMindmapFromChat(history, model);
       const idSet = new Set(result.nodes.map(n => n.id));
       // Build maps for quick lookup
       const nodeMap = new Map(result.nodes.map(n => [n.id, n] as const));
@@ -125,6 +133,56 @@ export const useStore = create<RFState>((set, get) => ({
       showSuccess('Mind map generated from chat.');
     } catch (e: any) {
       showError(e?.message || 'Failed to generate mind map.');
+    } finally {
+      set({ isMindmapGenerating: false });
+    }
+  },
+  generateMindmapFromTextInput: async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) {
+      showError('Input text is empty.');
+      return;
+    }
+    const model = get().selectedModel;
+    set({ isMindmapGenerating: true });
+    try {
+      const result = await generateMindmapFromText(trimmed, model);
+      const idSet = new Set(result.nodes.map(n => n.id));
+      // Build maps for quick lookup
+      const nodeMap = new Map(result.nodes.map(n => [n.id, n] as const));
+      // Determine roots (nodes that are not targets)
+      const targets = new Set(result.edges.map(e => e.target));
+      const roots = result.nodes.filter(n => !targets.has(n.id));
+      // Create MindMapNode objects
+      const nodes: MindMapNode[] = result.nodes.map((n, idx) => ({
+        id: String(n.id),
+        type: roots.some(r => r.id === n.id) ? 'root' : 'normal',
+        position: { x: 0, y: idx * 80 },
+        data: {
+          title: n.title,
+          color: n.color || '#94a3b8',
+          isRoot: roots.some(r => r.id === n.id),
+          question: '',
+          answer: '',
+          memo: '',
+        },
+      }));
+      // Create edges
+      const edges: MindMapEdge[] = result.edges
+        .filter(e => idSet.has(e.source) && idSet.has(e.target))
+        .map(e => ({
+          id: `e-${e.source}-${e.target}`,
+          source: String(e.source),
+          target: String(e.target),
+          style: { stroke: (nodeMap.get(e.target)?.color) || '#94a3b8', strokeWidth: 2 },
+        }));
+
+      set({ nodes, edges });
+      get().alignNodes();
+      set({ viewMode: 'mindmap' });
+      showSuccess('Mind map generated from text.');
+    } catch (e: any) {
+      showError(e?.message || 'Failed to generate mind map from text.');
     } finally {
       set({ isMindmapGenerating: false });
     }
@@ -511,7 +569,8 @@ export const useStore = create<RFState>((set, get) => ({
         ...context,
         userMessage
       ];
-      const answer = await fetchLLMResponse(messages);
+      const model = state.selectedModel;
+      const answer = await fetchLLMResponse(messages, model);
 
       // 3. Add LLM response to chat history
       const assistantMessage: ChatMessage = { role: 'assistant', content: answer };
@@ -546,7 +605,7 @@ export const useStore = create<RFState>((set, get) => ({
 
       // 6. Summarize to title
       const titlePrompt = createTitleSummarizationPrompt(question, answer);
-      const summarizedTitle = await fetchLLMResponse([{ role: 'user', content: titlePrompt }]);
+      const summarizedTitle = await fetchLLMResponse([{ role: 'user', content: titlePrompt }], model);
       
       let newTitle = summarizedTitle.trim().replace(/^"|"$/g, '');
       if (newTitle === '') newTitle = 'Untitled';

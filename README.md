@@ -1,7 +1,7 @@
 # AI Mind Map
 
-![Screenshot_mapmode](Screenshot_fm-mindmap_20251116_1.png)
-![Screenshot_chatmode](Screenshot_fm-mindmap_20251116_2.png)
+![Screenshot_mapmode](docs/Screenshot_fm-mindmap_20251116_1.png)
+![Screenshot_chatmode](docs/Screenshot_fm-mindmap_20251116_2.png)
 
 AIとの対話を通じてアイデアを広げ、思考を整理するためのインテリジェント・マインドマッピングツールです。
 

@@ -4,9 +4,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { X, Paintbrush, Bot, BookText, Loader2, PenSquare, NotebookPen, BrainCircuit } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useState, useEffect } from 'react';
 import { showError } from '@/utils/toast';
-import { fetchLLMResponse, SUMMARIZE_PROMPT } from '@/lib/api';
+import { fetchLLMResponse } from '@/lib/api';
+import { SUMMARIZE_PROMPT, CHAT_RESPONSE_SYSTEM_PROMPT, createTitleSummarizationPrompt, createAssociationPromptWithContext } from '@/lib/prompts';
 import { SummarizeModal } from './SummarizeModal';
 
 export function Sidebar({ onClose }: { onClose: () => void }) {
@@ -97,6 +104,7 @@ export function Sidebar({ onClose }: { onClose: () => void }) {
     try {
       const context = getContext(selectedNodeId, false);
       const messages = [
+        { role: 'system' as const, content: CHAT_RESPONSE_SYSTEM_PROMPT },
         ...context,
         { role: 'user' as const, content: question },
       ];
@@ -142,7 +150,7 @@ export function Sidebar({ onClose }: { onClose: () => void }) {
     }
     setIsSummarizingTitle(true);
     try {
-      const prompt = `Summarize the following question and answer into a short, concise title (around 10-15 characters). Output only the title text.\n\nQuestion: ${selectedNode.data.question}\n\nAnswer: ${selectedNode.data.answer}`;
+      const prompt = createTitleSummarizationPrompt(selectedNode.data.question, selectedNode.data.answer);
       
       const newTitle = await fetchLLMResponse([{ role: 'user', content: prompt }]);
       
@@ -168,10 +176,14 @@ export function Sidebar({ onClose }: { onClose: () => void }) {
   };
 
   const handleAssociateNodes = async () => {
-    if (!selectedNode) return;
+    if (!selectedNode || !selectedNodeId) return;
     setIsAssociating(true);
     try {
-      const prompt = `「${selectedNode.data.title}」という単語から連想される、関連性の高い単語を4つ、日本語で、カンマ(,)区切りで出力してください。例: りんご,ゴリラ,ラッパ,パセリ。余計な説明や番号付けは不要です。`;
+      // Get the conversation context up to (but not including) the current node
+      const context = getContext(selectedNodeId, false);
+      
+      // Use context-aware prompt for better, more contextual suggestions
+      const prompt = createAssociationPromptWithContext(selectedNode.data.title, context);
       const response = await fetchLLMResponse([{ role: 'user', content: prompt }]);
       const newTitles = response.split(',').map(t => t.trim()).filter(t => t.length > 0);
       if (newTitles.length === 0) {
@@ -250,33 +262,63 @@ export function Sidebar({ onClose }: { onClose: () => void }) {
             </div>
           </div>
         </div>
-        <div className="mt-4 pt-4 border-t space-y-2 flex-shrink-0">
-          <Button onClick={handleExecute} disabled={isLoading || !question.trim() || isAssociating} className="w-full">
-            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Bot className="mr-2 h-4 w-4" />}
-            Execute
-          </Button>
-          <Button 
-            onClick={handleAssociateNodes} 
-            disabled={isAssociating || isLoading} 
-            variant="outline" 
-            className="w-full"
-          >
-            {isAssociating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BrainCircuit className="mr-2 h-4 w-4" />}
-            Create Associated Nodes
-          </Button>
-          <Button 
-            onClick={handleSummarizeToTitle} 
-            disabled={isSummarizingTitle || isLoading || !selectedNode.data.question?.trim() || !selectedNode.data.answer?.trim() || isAssociating} 
-            variant="outline" 
-            className="w-full"
-          >
-            {isSummarizingTitle ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PenSquare className="mr-2 h-4 w-4" />}
-            Summarize to Title
-          </Button>
-          <Button onClick={handleSummarize} disabled={isSummarizing || isLoading || isAssociating} variant="outline" className="w-full">
-            {isSummarizing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BookText className="mr-2 h-4 w-4" />}
-            Summarize
-          </Button>
+        <div className="mt-4 pt-4 border-t flex-shrink-0">
+          <TooltipProvider>
+            <div className="flex gap-2 justify-center">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    onClick={handleExecute} 
+                    disabled={isLoading || !question.trim() || isAssociating} 
+                    size="icon"
+                    className="bg-blue-500 hover:bg-blue-600 text-white"
+                  >
+                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bot className="h-4 w-4" />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Execute</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    onClick={handleAssociateNodes} 
+                    disabled={isAssociating || isLoading} 
+                    size="icon"
+                    className="bg-purple-500 hover:bg-purple-600 text-white"
+                  >
+                    {isAssociating ? <Loader2 className="h-4 w-4 animate-spin" /> : <BrainCircuit className="h-4 w-4" />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Create Associated Nodes</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    onClick={handleSummarizeToTitle} 
+                    disabled={isSummarizingTitle || isLoading || !selectedNode.data.question?.trim() || !selectedNode.data.answer?.trim() || isAssociating} 
+                    size="icon"
+                    className="bg-orange-500 hover:bg-orange-600 text-white"
+                  >
+                    {isSummarizingTitle ? <Loader2 className="h-4 w-4 animate-spin" /> : <PenSquare className="h-4 w-4" />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Summarize to Title</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    onClick={handleSummarize} 
+                    disabled={isSummarizing || isLoading || isAssociating} 
+                    size="icon"
+                    className="bg-green-500 hover:bg-green-600 text-white"
+                  >
+                    {isSummarizing ? <Loader2 className="h-4 w-4 animate-spin" /> : <BookText className="h-4 w-4" />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Summarize</TooltipContent>
+              </Tooltip>
+            </div>
+          </TooltipProvider>
         </div>
       </aside>
       <SummarizeModal 

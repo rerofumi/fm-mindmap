@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, X, User, Bot, Loader2, Sparkles } from 'lucide-react';
+import { Send, X, User, Bot, Loader2, Sparkles, ChevronDown } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { useState, useRef, useEffect } from 'react';
 import { fetchLLMResponse } from '@/lib/api';
 import { showError } from '@/utils/toast';
+import { TEXT_REFINEMENT_PROMPT } from '@/lib/prompts';
 
 interface ChatSidebarProps {
   onClose: () => void;
@@ -23,12 +24,37 @@ export function ChatSidebar({ onClose }: ChatSidebarProps) {
   const [isSending, setIsSending] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+
+  const getViewportEl = () => {
+    const root = scrollAreaRef.current;
+    if (!root) return null;
+    return root.querySelector('[data-radix-scroll-area-viewport]') as HTMLDivElement | null;
+  };
+
+  const scrollToBottom = (smooth = true) => {
+    const viewport = getViewportEl();
+    if (viewport) {
+      viewport.scrollTo({ top: viewport.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+    }
+  };
 
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTo({ top: scrollAreaRef.current.scrollHeight });
-    }
+    scrollToBottom(true);
   }, [chatHistory]);
+
+  useEffect(() => {
+    const viewport = getViewportEl();
+    if (!viewport) return;
+    const onScroll = () => {
+      const threshold = 48;
+      const distanceFromBottom = viewport.scrollHeight - (viewport.scrollTop + viewport.clientHeight);
+      setShowScrollToBottom(distanceFromBottom > threshold);
+    };
+    viewport.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => viewport.removeEventListener('scroll', onScroll);
+  }, []);
 
   const submitMessage = async () => {
     if (!inputValue.trim() || !selectedNodeId || isSending || isRefining) return;
@@ -64,12 +90,7 @@ export function ChatSidebar({ onClose }: ChatSidebarProps) {
     setIsRefining(true);
     try {
       const context = getContext(selectedNodeId, true);
-      const prompt = `You are an assistant that refines user input for a chat. Correct any typos and grammatical errors, and clarify the language in the following text, based on the provided chat context. Preserve the original meaning and intent. Output only the refined text, without any extra formatting, explanations, or quotation marks.
-
-Chat Context:
-${context.map(m => `${m.role}: ${m.content}`).join('\n\n')}
-
-Text to refine: "${inputValue}"`;
+      const prompt = TEXT_REFINEMENT_PROMPT(context, inputValue);
 
       const refinedText = await fetchLLMResponse([{ role: 'user', content: prompt }]);
       setInputValue(refinedText.trim().replace(/^"|"$/g, ''));
@@ -83,13 +104,25 @@ Text to refine: "${inputValue}"`;
   return (
     <aside className="w-96 bg-gray-50 p-4 border-r border-gray-200 dark:bg-gray-900 dark:border-gray-800 flex-shrink-0 flex flex-col">
       <div className="flex justify-between items-center mb-4 flex-shrink-0">
-        <h3 className="text-lg font-semibold">Chat History</h3>
+        <h3 className="text-lg font-semibold">Context History</h3>
         <Button variant="ghost" size="icon" onClick={onClose}>
           <X className="h-4 w-4" />
         </Button>
       </div>
 
-      <ScrollArea className="flex-grow pr-4 -mr-4" ref={scrollAreaRef}>
+      <ScrollArea className="relative flex-grow pr-4 -mr-4" ref={scrollAreaRef}>
+        {showScrollToBottom && (
+          <Button
+            type="button"
+            size="icon"
+            className="absolute right-2 bottom-2 shadow"
+            variant="secondary"
+            onClick={() => scrollToBottom(true)}
+            title="Scroll to latest"
+          >
+            <ChevronDown className="h-4 w-4" />
+          </Button>
+        )}
         <div className="space-y-4">
           {chatHistory.map((message, index) => (
             <div
@@ -137,7 +170,7 @@ Text to refine: "${inputValue}"`;
       <form onSubmit={handleFormSubmit} className="mt-4 pt-4 border-t flex-shrink-0">
         <div className="flex gap-2">
           <Input
-            placeholder={selectedNodeId ? "Ask a question..." : "Select a node to chat"}
+            placeholder={selectedNodeId ? "Ask a question..." : "Select a node for context"}
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}

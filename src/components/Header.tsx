@@ -58,14 +58,16 @@ export function Header() {
         <div role="tablist" className="flex items-center gap-1">
           <Button role="tab" aria-selected={viewMode === 'mindmap'}
             size="sm"
+            className={viewMode === 'mindmap' ? 'bg-blue-500 text-white hover:bg-blue-600' : ''}
             variant={viewMode === 'mindmap' ? 'secondary' : 'ghost'}
             onClick={() => setViewMode('mindmap')}
-          >Mindmap</Button>
+          >Map mode</Button>
           <Button role="tab" aria-selected={viewMode === 'chat'}
             size="sm"
+            className={viewMode === 'chat' ? 'bg-green-500 text-white hover:bg-green-600' : ''}
             variant={viewMode === 'chat' ? 'secondary' : 'ghost'}
             onClick={() => setViewMode('chat')}
-          >Chat</Button>
+          >Chat mode</Button>
         </div>
         <input
           type="file"

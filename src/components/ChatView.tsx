@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, Loader2, User, Bot, Sparkles, MessageSquarePlus, Wand2 } from 'lucide-react';
+import { Send, Loader2, User, Bot, Sparkles, MessageSquarePlus, Wand2, ChevronDown } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -21,12 +21,38 @@ export function ChatView() {
   const [inputValue, setInputValue] = useState('');
   const [isRefining, setIsRefining] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+
+  const getViewportEl = () => {
+    const root = scrollAreaRef.current;
+    if (!root) return null;
+    return root.querySelector('[data-radix-scroll-area-viewport]') as HTMLDivElement | null;
+  };
+
+  const scrollToBottom = (smooth = true) => {
+    const viewport = getViewportEl();
+    if (viewport) {
+      viewport.scrollTo({ top: viewport.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+    }
+  };
 
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTo({ top: scrollAreaRef.current.scrollHeight, behavior: 'smooth' });
-    }
+    scrollToBottom(true);
   }, [standaloneChatHistory]);
+
+  useEffect(() => {
+    const viewport = getViewportEl();
+    if (!viewport) return;
+    const onScroll = () => {
+      const threshold = 48; // px from bottom to consider "at bottom"
+      const distanceFromBottom = viewport.scrollHeight - (viewport.scrollTop + viewport.clientHeight);
+      setShowScrollToBottom(distanceFromBottom > threshold);
+    };
+    viewport.addEventListener('scroll', onScroll, { passive: true });
+    // run once to set initial state
+    onScroll();
+    return () => viewport.removeEventListener('scroll', onScroll);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,7 +128,20 @@ export function ChatView() {
       </div>
 
       {/* Messages area */}
-      <ScrollArea className="flex-grow p-6" ref={scrollAreaRef}>
+      <ScrollArea className="relative flex-grow p-6" ref={scrollAreaRef}>
+        {/* Scroll to bottom button */}
+        {showScrollToBottom && (
+          <Button
+            type="button"
+            size="icon"
+            className="absolute right-4 bottom-4 shadow"
+            variant="secondary"
+            onClick={() => scrollToBottom(true)}
+            title="Scroll to latest"
+          >
+            <ChevronDown className="h-4 w-4" />
+          </Button>
+        )}
         <div className="max-w-4xl mx-auto space-y-4">
           {standaloneChatHistory.length === 0 ? (
             <div className="text-center text-muted-foreground py-12">

@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, X, User, Bot, Loader2, Sparkles } from 'lucide-react';
+import { Send, X, User, Bot, Loader2, Sparkles, ChevronDown } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -24,12 +24,37 @@ export function ChatSidebar({ onClose }: ChatSidebarProps) {
   const [isSending, setIsSending] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+
+  const getViewportEl = () => {
+    const root = scrollAreaRef.current;
+    if (!root) return null;
+    return root.querySelector('[data-radix-scroll-area-viewport]') as HTMLDivElement | null;
+  };
+
+  const scrollToBottom = (smooth = true) => {
+    const viewport = getViewportEl();
+    if (viewport) {
+      viewport.scrollTo({ top: viewport.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+    }
+  };
 
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTo({ top: scrollAreaRef.current.scrollHeight });
-    }
+    scrollToBottom(true);
   }, [chatHistory]);
+
+  useEffect(() => {
+    const viewport = getViewportEl();
+    if (!viewport) return;
+    const onScroll = () => {
+      const threshold = 48;
+      const distanceFromBottom = viewport.scrollHeight - (viewport.scrollTop + viewport.clientHeight);
+      setShowScrollToBottom(distanceFromBottom > threshold);
+    };
+    viewport.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => viewport.removeEventListener('scroll', onScroll);
+  }, []);
 
   const submitMessage = async () => {
     if (!inputValue.trim() || !selectedNodeId || isSending || isRefining) return;
@@ -85,7 +110,19 @@ export function ChatSidebar({ onClose }: ChatSidebarProps) {
         </Button>
       </div>
 
-      <ScrollArea className="flex-grow pr-4 -mr-4" ref={scrollAreaRef}>
+      <ScrollArea className="relative flex-grow pr-4 -mr-4" ref={scrollAreaRef}>
+        {showScrollToBottom && (
+          <Button
+            type="button"
+            size="icon"
+            className="absolute right-2 bottom-2 shadow"
+            variant="secondary"
+            onClick={() => scrollToBottom(true)}
+            title="Scroll to latest"
+          >
+            <ChevronDown className="h-4 w-4" />
+          </Button>
+        )}
         <div className="space-y-4">
           {chatHistory.map((message, index) => (
             <div

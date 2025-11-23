@@ -1,15 +1,13 @@
 # Build stage
-FROM node:20-slim AS build
+FROM node:22-slim AS build
 
 WORKDIR /app
 
-RUN npm install -g pnpm
-
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+COPY package.json package-lock.json ./
+RUN npm install --frozen-lockfile
 
 COPY . .
-RUN pnpm build
+RUN npm run build
 
 # Production stage
 FROM docker.io/nginx:stable-alpine

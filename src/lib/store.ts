@@ -57,7 +57,7 @@ export const useStore = create<RFState>((set, get) => ({
   // View state
   viewMode: 'mindmap',
   setViewMode: (mode) => set({ viewMode: mode }),
-  selectedModel: import.meta.env.VITE_OPENROUTER_MODEL || defaultModel,
+  selectedModel: import.meta.env.LLM_MODEL_NAME || defaultModel,
   setSelectedModel: (model) => set({ selectedModel: model }),
 
   // In-mindmap chat sidebar

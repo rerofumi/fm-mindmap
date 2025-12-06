@@ -3,8 +3,9 @@ import type { ChatMessage } from '@/types';
 import { SUMMARIZE_PROMPT, MINDMAP_GENERATION_SYSTEM_PROMPT, MINDMAP_GENERATION_INSTRUCTION, TEXT_TO_MINDMAP_SYSTEM_PROMPT, TEXT_TO_MINDMAP_INSTRUCTION } from './prompts';
 import { defaultModel } from './modelConfig';
 
-const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
+const BASE_URL = import.meta.env.LLM_BASE_URL || 'https://openrouter.ai/api/v1';
+const API_URL = `${BASE_URL.replace(/\/$/, '')}/chat/completions`;
+const API_KEY = import.meta.env.LLM_API_KEY;
 
 interface Message {
   role: 'user' | 'assistant' | 'system';
@@ -13,7 +14,7 @@ interface Message {
 
 export const fetchLLMResponse = async (messages: Message[], model?: string): Promise<string> => {
   if (!API_KEY || API_KEY === "your_api_key_here") {
-    const errorMessage = 'VITE_OPENROUTER_API_KEY is not set in .env file. Please set it and rebuild the app.';
+    const errorMessage = 'LLM_API_KEY is not set in .env file. Please set it and rebuild the app.';
     showError(errorMessage);
     throw new Error(errorMessage);
   }
@@ -26,7 +27,7 @@ export const fetchLLMResponse = async (messages: Message[], model?: string): Pro
         'Authorization': `Bearer ${API_KEY}`,
       },
       body: JSON.stringify({
-        model: model || import.meta.env.VITE_OPENROUTER_MODEL || defaultModel,
+        model: model || import.meta.env.LLM_MODEL_NAME || defaultModel,
         messages: messages,
       }),
     });
@@ -42,7 +43,7 @@ export const fetchLLMResponse = async (messages: Message[], model?: string): Pro
     return data.choices[0].message.content;
   } catch (error) {
     console.error('Error fetching LLM response:', error);
-    if (!(error instanceof Error && error.message.includes('VITE_OPENROUTER_API_KEY'))) {
+    if (!(error instanceof Error && error.message.includes('LLM_API_KEY'))) {
         showError(error instanceof Error ? error.message : 'An unknown error occurred');
     }
     throw error;

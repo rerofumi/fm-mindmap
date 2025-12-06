@@ -55,15 +55,22 @@ AI機能の利用には OpenRouter API キーが必要です。
 このアプリケーションを実行するには、プロジェクトのルートディレクトリに `.env` ファイルを作成し、以下の環境変数を設定する必要があります。
 
 ```.env
-# OpenRouter APIキー
-VITE_OPENROUTER_API_KEY="your_api_key_here"
+# (必須) LLM APIキー (OpenRouter, OpenAI, etc.)
+LLM_API_KEY="your_api_key_here"
+
+# (任意) API ベースURL
+# デフォルトは OpenRouter (https://openrouter.ai/api/v1) です。
+# /chat/completions は自動的に付与されるため、ベースのURLのみを指定してください。
+# LLM_BASE_URL="https://api.openai.com/v1"
 
 # (任意) 使用するLLMモデル
-VITE_OPENROUTER_MODEL="openai/gpt-5-mini"
+# デフォルトは openai/gpt-5-mini です。
+LLM_MODEL_NAME="openai/gpt-5-mini"
 ```
 
-- `VITE_OPENROUTER_API_KEY`: AIとの通信に必須です。OpenRouterなどで取得したAPIキーを設定してください。
-- `VITE_OPENROUTER_MODEL`: 使用する言語モデルを指定します。省略した場合は `openai/gpt-5-mini` が使用されます。アプリ起動後もヘッダーのドロップダウンメニューから動的に変更可能です。
+- `LLM_API_KEY`: AIとの通信に必須です。APIキーを設定してください。
+- `LLM_BASE_URL`: APIのエンドポイントのベースURLを指定します。省略時は OpenRouter が使用されます。
+- `LLM_MODEL_NAME`: 使用する言語モデルを指定します。省略した場合は `openai/gpt-5-mini` が使用されます。アプリ起動後もヘッダーのドロップダウンメニューから動的に変更可能です。
 
 ## 🚀 起動方法
 
@@ -132,4 +139,3 @@ VITE_OPENROUTER_MODEL="openai/gpt-5-mini"
 ## 👤 作者
 
 - **rerofumi** - [GitHub](https://github.com/rerofumi) - rero2@yuumu.org
-

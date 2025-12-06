@@ -145,22 +145,26 @@ As of now there are **no test scripts** defined in `package.json` and no obvious
 
 Environment variables are consumed via `import.meta.env` (Vite) and documented in `README.md` and `src/lib/api.ts`:
 
-- `VITE_OPENROUTER_API_KEY` (required)
-  - Used in `src/lib/api.ts` as the bearer token for OpenRouter.
+- `LLM_API_KEY` (required)
+  - Used in `src/lib/api.ts` as the bearer token for LLM API.
   - If missing or still set to the placeholder `"your_api_key_here"`, `fetchLLMResponse` shows an error and throws, preventing AI calls.
-- `VITE_OPENROUTER_MODEL` (optional)
+- `LLM_BASE_URL` (optional)
+  - Base URL for the LLM API. Defaults to `https://openrouter.ai/api/v1` if not provided.
+  - `/chat/completions` is automatically appended.
+- `LLM_MODEL_NAME` (optional)
   - Also read in `src/lib/api.ts`.
-  - Defaults to `openai/gpt-3.5-turbo` if not provided.
+  - Defaults to `openai/gpt-5-mini` if not provided.
 
-These variables are expected to be set in a `.env` file at the project root (see README). Example from the README:
+These variables are expected to be set in a `.env` file at the project root (see README). Example:
 
 ```bash
-VITE_OPENROUTER_API_KEY="your_api_key_here"
-VITE_OPENROUTER_MODEL="openai/gpt-3.5-turbo"   # optional
+LLM_API_KEY="your_api_key_here"
+LLM_BASE_URL="https://api.openai.com/v1"      # optional
+LLM_MODEL_NAME="openai/gpt-5-mini"           # optional
 VITE_SUMMARIZE_PROMPT="Please summarize this conversation concisely in Markdown format."  # optional
 ```
 
-The LLM endpoint is hard-coded in `src/lib/api.ts` as `https://openrouter.ai/api/v1/chat/completions`. Any compatible API must match this interface.
+The LLM endpoint is configurable via `LLM_BASE_URL`. Any compatible API must match the OpenAI Chat Completions interface.
 
 
 ## TypeScript, aliases, and project conventions

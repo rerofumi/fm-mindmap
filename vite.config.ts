@@ -9,6 +9,7 @@ export default defineConfig(() => ({
     port: 8080,
   },
   plugins: [dyadComponentTagger(), react()],
+  envPrefix: ["VITE_", "LLM_"],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

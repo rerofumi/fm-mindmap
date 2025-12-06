@@ -249,8 +249,9 @@
   - Anthropic: Claude Haiku 4.5, Claude Sonnet 4.5
   - Google: Gemini 2.5 Pro
 - **環境変数**:
-  - `VITE_OPENROUTER_API_KEY`: OpenRouter APIキー（必須）
-  - `VITE_OPENROUTER_MODEL`: デフォルト使用モデル（オプション、未指定時は `openai/gpt-5-mini`）
+  - `LLM_API_KEY`: APIキー（必須）
+  - `LLM_BASE_URL`: APIベースURL（オプション、デフォルト: `https://openrouter.ai/api/v1`）
+  - `LLM_MODEL_NAME`: デフォルト使用モデル（オプション、未指定時は `openai/gpt-5-mini`）
 - **エラーハンドリング**: API通信エラー時はtoast通知でユーザーに通知
 
 ### 3.3. 開発ツール

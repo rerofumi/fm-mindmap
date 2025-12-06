@@ -9,10 +9,9 @@ export interface ModelOption {
 }
 
 /**
- * Available LLM models for OpenRouter
- * Add or remove models here to update the model selection dropdown
+ * Default fixed list of models (fallback if no env var is set)
  */
-export const availableModels: ModelOption[] = [
+const defaultFixedModels: ModelOption[] = [
   { value: 'openai/gpt-5-mini', label: 'GPT-5 Mini' },
   { value: 'openai/gpt-5.1-chat', label: 'GPT-5.1 Chat' },
   { value: 'openai/gpt-oss-120b', label: 'GPT-OSS 120b' },
@@ -23,7 +22,26 @@ export const availableModels: ModelOption[] = [
   { value: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
 ];
 
+const getAvailableModels = (): ModelOption[] => {
+  const envList = import.meta.env.LLM_MODEL_LIST;
+  if (envList && typeof envList === 'string' && envList.trim().length > 0) {
+    return envList.split(',').map(m => {
+      const trimmed = m.trim();
+      return { value: trimmed, label: trimmed };
+    });
+  }
+  return defaultFixedModels;
+};
+
+/**
+ * Available LLM models
+ * Uses LLM_MODEL_LIST environment variable if available, otherwise uses default list
+ */
+export const availableModels: ModelOption[] = getAvailableModels();
+
 /**
  * Default model to use if not specified
+ * Uses LLM_MODEL_NAME environment variable if available, otherwise uses the first available model or a fallback
  */
-export const defaultModel = 'openai/gpt-5-mini';
+export const defaultModel = import.meta.env.LLM_MODEL_NAME ||
+  (availableModels.length > 0 ? availableModels[0].value : 'openai/gpt-5-mini');

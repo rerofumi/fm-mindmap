@@ -3,6 +3,7 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile
+    restart: always
     ports:
       - "27080:80"
 

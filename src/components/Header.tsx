@@ -4,7 +4,7 @@ import { MindMapNode, MindMapEdge } from '@/types';
 import { showError } from '@/utils/toast';
 import { useRef, useState } from 'react';
 import { deserializeMindMap } from '@/lib/fileUtils';
-import { availableModels } from '@/lib/modelConfig';
+import { getSafeAvailableModels } from '@/lib/modelConfig';
 import { FileText, ChevronDown } from 'lucide-react';
 import { TextToMindmapModal } from '@/components/TextToMindmapModal';
 import { Input } from '@/components/ui/input';
@@ -42,6 +42,7 @@ export function Header() {
   const [loadedData, setLoadedData] = useState<{ nodes: MindMapNode[], edges: MindMapEdge[] } | null>(null);
   const [isTextModalOpen, setIsTextModalOpen] = useState(false);
   const [isModelListOpen, setIsModelListOpen] = useState(false);
+  const availableModels = getSafeAvailableModels();
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];

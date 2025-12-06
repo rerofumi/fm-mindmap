@@ -4,7 +4,7 @@ import { MindMapNode, MindMapNodeData, MindMapEdge, ChatMessage, ViewMode } from
 import { showSuccess, showError } from '@/utils/toast';
 import { fetchLLMResponse, generateMindmapFromChat, generateMindmapFromText } from './api';
 import { CHAT_RESPONSE_SYSTEM_PROMPT, createTitleSummarizationPrompt } from './prompts';
-import { defaultModel } from './modelConfig';
+import { getDefaultModel } from './modelConfig';
 
 interface RFState {
   // Mindmap state
@@ -57,7 +57,7 @@ export const useStore = create<RFState>((set, get) => ({
   // View state
   viewMode: 'mindmap',
   setViewMode: (mode) => set({ viewMode: mode }),
-  selectedModel: import.meta.env.LLM_MODEL_NAME || defaultModel,
+  selectedModel: getDefaultModel(), // Initialize with dynamic value
   setSelectedModel: (model) => set({ selectedModel: model }),
 
   // In-mindmap chat sidebar

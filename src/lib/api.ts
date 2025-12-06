@@ -1,11 +1,10 @@
 import { showError } from '@/utils/toast';
 import type { ChatMessage } from '@/types';
 import { SUMMARIZE_PROMPT, MINDMAP_GENERATION_SYSTEM_PROMPT, MINDMAP_GENERATION_INSTRUCTION, TEXT_TO_MINDMAP_SYSTEM_PROMPT, TEXT_TO_MINDMAP_INSTRUCTION } from './prompts';
-import { defaultModel } from './modelConfig';
+import { defaultModel, getDefaultModel } from './modelConfig';
 
-const BASE_URL = import.meta.env.LLM_BASE_URL || 'https://openrouter.ai/api/v1';
-const API_URL = `${BASE_URL.replace(/\/$/, '')}/chat/completions`;
-const API_KEY = import.meta.env.LLM_API_KEY;
+const getBaseUrl = () => import.meta.env.LLM_BASE_URL || (typeof window !== 'undefined' ? (window as any).LLM_BASE_URL : undefined) || 'https://openrouter.ai/api/v1';
+const getApiKey = () => import.meta.env.LLM_API_KEY || (typeof window !== 'undefined' ? (window as any).LLM_API_KEY : undefined);
 
 interface Message {
   role: 'user' | 'assistant' | 'system';
@@ -13,6 +12,11 @@ interface Message {
 }
 
 export const fetchLLMResponse = async (messages: Message[], model?: string): Promise<string> => {
+  const modelName = model || getDefaultModel();
+  const API_KEY = getApiKey();
+  const BASE_URL = getBaseUrl();
+  const API_URL = `${BASE_URL.replace(/\/$/, '')}/chat/completions`;
+
   if (!API_KEY || API_KEY === "your_api_key_here") {
     const errorMessage = 'LLM_API_KEY is not set in .env file. Please set it and rebuild the app.';
     showError(errorMessage);
@@ -27,7 +31,7 @@ export const fetchLLMResponse = async (messages: Message[], model?: string): Pro
         'Authorization': `Bearer ${API_KEY}`,
       },
       body: JSON.stringify({
-        model: model || import.meta.env.LLM_MODEL_NAME || defaultModel,
+        model: modelName,
         messages: messages,
       }),
     });

@@ -22,8 +22,10 @@ const defaultFixedModels: ModelOption[] = [
   { value: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
 ];
 
+const getEnvModelList = () => import.meta.env.LLM_MODEL_LIST || (typeof window !== 'undefined' ? (window as any).LLM_MODEL_LIST : undefined);
+
 const getAvailableModels = (): ModelOption[] => {
-  const envList = import.meta.env.LLM_MODEL_LIST;
+  const envList = getEnvModelList();
   if (envList && typeof envList === 'string' && envList.trim().length > 0) {
     return envList.split(',').map(m => {
       const trimmed = m.trim();
@@ -37,11 +39,15 @@ const getAvailableModels = (): ModelOption[] => {
  * Available LLM models
  * Uses LLM_MODEL_LIST environment variable if available, otherwise uses default list
  */
-export const availableModels: ModelOption[] = getAvailableModels();
+export const availableModels: ModelOption[] = []; // Deprecated: use getSafeAvailableModels() instead
+
+export const getSafeAvailableModels = () => getAvailableModels();
 
 /**
  * Default model to use if not specified
  * Uses LLM_MODEL_NAME environment variable if available, otherwise uses the first available model or a fallback
  */
-export const defaultModel = import.meta.env.LLM_MODEL_NAME ||
-  (availableModels.length > 0 ? availableModels[0].value : 'openai/gpt-5-mini');
+export const defaultModel = ''; // Deprecated: use getDefaultModel() instead
+
+export const getDefaultModel = () => import.meta.env.LLM_MODEL_NAME || (typeof window !== 'undefined' ? (window as any).LLM_MODEL_NAME : undefined) ||
+  (getSafeAvailableModels().length > 0 ? getSafeAvailableModels()[0].value : 'openai/gpt-5-mini');

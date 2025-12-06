@@ -1,6 +1,6 @@
 # マインドマップアプリ仕様書 v3
 
-本文書は、`04_specifications_2.md` からの機能強化を実装した最新版の仕様書です。  
+本文書は、`04_specifications_2.md` からの機能強化を実装した最新版の仕様書です。
 `05_upgrade_plan_1.md` で提案された4つの改善項目を実装し、より柔軟で高機能なマインドマップアプリケーションとなりました。
 
 最終更新日: 2025年11月16日
@@ -29,7 +29,7 @@
   - **スタンドアローンチャット履歴** (`standaloneChatHistory`): チャットモード専用の会話履歴
 
 - **UIコンポーネント**:
-  - **ヘッダー** (`Header.tsx`): ビューモード切替タブ、LLMモデル選択ドロップダウン、テキストから作成ボタンを配置。
+  - **ヘッダー** (`Header.tsx`): ビューモード切替タブ、LLMモデル選択コンボボックス、テキストから作成ボタンを配置。
   - **マインドマップキャンバス** (`MindMapCanvas.tsx`): マインドマップを描画するメインエリア（マップモード時）。
   - **チャットビュー** (`ChatView.tsx`): スタンドアローンチャットインターフェース（チャットモード時）。
   - **詳細情報サイドバー** (`Sidebar.tsx`): 選択されたノードの詳細情報を表示・編集。
@@ -84,11 +84,11 @@
     - `model` パラメータでモデルを動的に指定可能（未指定時は状態管理の `selectedModel` または環境変数を使用）
 
 - **モデル選択機能** (`lib/modelConfig.ts`):
-  - 利用可能なLLMモデルのリストを `availableModels` 配列で管理
-  - デフォルトモデル: `openai/gpt-5-mini`
-  - ヘッダーのドロップダウンメニューからリアルタイムで切り替え可能
+  - 利用可能なLLMモデルのリストを管理（環境変数 `LLM_MODEL_LIST` があればそれを使用、なければデフォルトリスト）
+  - デフォルトモデル: `LLM_MODEL_NAME` 環境変数または `openai/gpt-5-mini`
+  - ヘッダーのコンボボックスからリアルタイムで切り替え可能（自由入力およびリスト選択）
   - 設定されたモデルは全てのLLM API呼び出しで使用される
-  - 現在利用可能なモデル:
+  - デフォルトで利用可能なモデル（`LLM_MODEL_LIST`未設定時）:
     - GPT-5 Mini / GPT-5.1 Chat / GPT-OSS 120b
     - Qwen3 Next (reasoning / instruct)
     - Claude Haiku 4.5 / Claude Sonnet 4.5
@@ -183,19 +183,19 @@
 
 ### 2.1. 基本機能（v2からの継続）
 
-✅ 環境構築 & プロジェクトセットアップ  
-✅ UIコンポーネント実装  
-✅ マインドマップ基本機能（CRUD、ドラッグ、パン、ズーム）  
-✅ ノード内直接編集（ダブルクリック編集）  
-✅ 親子関係編集機能（ドラッグ＆ドロップ、循環参照検出）  
-✅ LLM連携機能（質問・回答、コンテキスト構築）  
-✅ データ永続化（Markdown + JSON形式）  
-✅ ノード整列機能  
-✅ 色適用機能  
-✅ タイトル自動生成  
-✅ サマライズ機能  
-✅ チャット機能（チャットサイドバー、自動子ノード生成）  
-✅ メモ機能  
+✅ 環境構築 & プロジェクトセットアップ
+✅ UIコンポーネント実装
+✅ マインドマップ基本機能（CRUD、ドラッグ、パン、ズーム）
+✅ ノード内直接編集（ダブルクリック編集）
+✅ 親子関係編集機能（ドラッグ＆ドロップ、循環参照検出）
+✅ LLM連携機能（質問・回答、コンテキスト構築）
+✅ データ永続化（Markdown + JSON形式）
+✅ ノード整列機能
+✅ 色適用機能
+✅ タイトル自動生成
+✅ サマライズ機能
+✅ チャット機能（チャットサイドバー、自動子ノード生成）
+✅ メモ機能
 
 ### 2.2. v3で追加された新機能（`05_upgrade_plan_1.md` 対応）
 
@@ -211,8 +211,10 @@
   - 文脈に即した示唆に富むキーワードの生成
 
 ✅ **LLMモデル選択機能の追加**（改善項目3）
-  - ヘッダーにモデル選択ドロップダウン実装
-  - 8種類のLLMモデルをサポート（GPT-5, Qwen3, Claude, Gemini等）
+  - ヘッダーにモデル選択コンボボックス実装
+  - 8種類のLLMモデルをデフォルトでサポート
+  - 環境変数 `LLM_MODEL_LIST` によるモデルリストのカスタマイズ
+  - テキスト入力による自由なモデル指定
   - リアルタイムでモデル切り替え可能
   - 全てのLLM API呼び出しで選択モデルを使用
   - モデル設定の一元管理 (`lib/modelConfig.ts`)
@@ -252,6 +254,7 @@
   - `LLM_API_KEY`: APIキー（必須）
   - `LLM_BASE_URL`: APIベースURL（オプション、デフォルト: `https://openrouter.ai/api/v1`）
   - `LLM_MODEL_NAME`: デフォルト使用モデル（オプション、未指定時は `openai/gpt-5-mini`）
+  - `LLM_MODEL_LIST`: モデル選択用リスト（オプション、カンマ区切り）
 - **エラーハンドリング**: API通信エラー時はtoast通知でユーザーに通知
 
 ### 3.3. 開発ツール
@@ -318,7 +321,7 @@ interface RFState {
   // View state
   viewMode: ViewMode;                      // 'mindmap' | 'chat'
   selectedModel: string;                   // 現在選択中のLLMモデル
-  
+
   // In-mindmap chat sidebar
   isChatSidebarOpen: boolean;
   chatHistory: ChatMessage[];
@@ -327,7 +330,7 @@ interface RFState {
   standaloneChatHistory: ChatMessage[];    // チャットモード専用履歴
   isStandaloneChatLoading: boolean;        // チャットモード用ローディング状態
   isMindmapGenerating: boolean;            // マインドマップ生成中フラグ
-  
+
   // Actions
   setViewMode: (mode: ViewMode) => void;
   setSelectedModel: (model: string) => void;
@@ -343,18 +346,18 @@ interface RFState {
 
 - **ビューモード管理**:
   - `setViewMode(mode)`: マップモードとチャットモードを切り替え
-  
+
 - **モデル選択**:
   - `setSelectedModel(model)`: 使用するLLMモデルを動的に変更
-  
+
 - **スタンドアローンチャット**:
   - `sendStandaloneMessage(content)`: チャットモードでメッセージを送信し、LLMから回答を取得
   - `clearStandaloneChat()`: チャット履歴をクリア
   - `generateMindmapFromStandaloneChat()`: チャット履歴からマインドマップを生成
-  
+
 - **テキスト生成**:
   - `generateMindmapFromTextInput(text)`: 入力テキストからマインドマップを生成
-  
+
 - **ノード操作**:
   - `addRootNode()`: ルートノードを追加
   - `addChildNode()`: 子ノードを追加
@@ -364,14 +367,14 @@ interface RFState {
   - `updateNodeData(nodeId, data)`: 特定ノードのデータを更新
   - `applyColorToDescendants()`: 選択ノードの色を子孫に適用
   - `alignNodes()`: ノードを自動整列
-  
+
 - **チャット機能（マップモード内）**:
   - `chatAndCreateNode(question)`: チャットサイドバーで質問を送信し、自動的に子ノードを生成
   - `toggleChatSidebar()`: チャットサイドバーの開閉
-  
+
 - **コンテキスト管理**:
   - `getContext(nodeId, includeCurrentNode?)`: 指定ノードまでの対話履歴を取得
-  
+
 - **データ管理**:
   - `loadState(newState)`: マインドマップをインポート
 
@@ -407,8 +410,8 @@ interface RFState {
 
 ### 6.4. シナリオ4: LLMモデルの切り替え
 
-1. ヘッダーのモデル選択ドロップダウンをクリック。
-2. タスクに応じて最適なモデルを選択（例: 創造的な発想→GPT-5, 厳密な分析→Claude Sonnet）。
+1. ヘッダーのモデル選択コンボボックスをクリック。
+2. タスクに応じて最適なモデルを選択、または直接入力（例: 創造的な発想→GPT-5, 厳密な分析→Claude Sonnet）。
 3. 以降、全てのLLM API呼び出しで選択したモデルが使用される。
 4. チャット、質問実行、連想ワード生成、サマライズなど、全機能で動的に切り替え可能。
 
@@ -460,9 +463,9 @@ interface RFState {
 - `availableModels` 配列で利用可能なモデルを定義
 - `selectedModel` ステートをZustandストアに追加
 - `setSelectedModel` アクションを実装
-- Header.tsx にモデル選択ドロップダウンを追加（shadcn/ui の Select コンポーネント使用）
+- Header.tsx にモデル選択コンボボックスを追加（自由入力可能なドロップダウン）
 - 全ての `fetchLLMResponse` 呼び出しに `model` パラメータを追加
-- 8種類のLLMモデルをサポート（GPT-5, Qwen3, Claude, Gemini）
+- 環境変数 `LLM_MODEL_LIST` および `LLM_MODEL_NAME` によるカスタマイズに対応
 
 **効果**:
 - タスクの性質に応じて最適なモデルをリアルタイムで選択可能

@@ -5,15 +5,20 @@ import { showError } from '@/utils/toast';
 import { useRef, useState } from 'react';
 import { deserializeMindMap } from '@/lib/fileUtils';
 import { availableModels } from '@/lib/modelConfig';
-import { FileText } from 'lucide-react';
+import { FileText, ChevronDown } from 'lucide-react';
 import { TextToMindmapModal } from '@/components/TextToMindmapModal';
+import { Input } from '@/components/ui/input';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  Command,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,6 +41,7 @@ export function Header() {
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [loadedData, setLoadedData] = useState<{ nodes: MindMapNode[], edges: MindMapEdge[] } | null>(null);
   const [isTextModalOpen, setIsTextModalOpen] = useState(false);
+  const [isModelListOpen, setIsModelListOpen] = useState(false);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -92,19 +98,47 @@ export function Header() {
           テキストから作成
         </Button>
         <div className="ml-auto flex items-center gap-2">
-          <label htmlFor="model-select" className="text-sm font-medium">Model:</label>
-          <Select value={selectedModel} onValueChange={setSelectedModel}>
-            <SelectTrigger id="model-select" className="w-[200px]">
-              <SelectValue placeholder="Select a model" />
-            </SelectTrigger>
-            <SelectContent>
-              {availableModels.map((model) => (
-                <SelectItem key={model.value} value={model.value}>
-                  {model.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <label htmlFor="model-input" className="text-sm font-medium">Model:</label>
+          <div className="relative flex items-center w-[250px]">
+            <Input
+              id="model-input"
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              className="pr-8"
+              placeholder="Enter or select model"
+            />
+            <Popover open={isModelListOpen} onOpenChange={setIsModelListOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 h-full w-8 rounded-l-none"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="p-0 w-[250px]" align="end">
+                <Command>
+                  <CommandList>
+                    <CommandGroup>
+                      {availableModels.map((model) => (
+                        <CommandItem
+                          key={model.value}
+                          value={model.value}
+                          onSelect={() => {
+                            setSelectedModel(model.value);
+                            setIsModelListOpen(false);
+                          }}
+                        >
+                          {model.label}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
         </div>
         <input
           type="file"

@@ -27,7 +27,7 @@ AI機能の利用には OpenRouter API キーが必要です。
 - **タイトルの自動要約**: ノードの「問い」と「答え」の内容をAIが要約し、簡潔なタイトルを自動で設定します。
 - **コンテキスト対応の連想ワード展開**: 選択したノードのタイトルと**親ノードからの対話履歴全体**を考慮し、AIが文脈に即した示唆に富むキーワードを複数提案。新しい子ノードとして一括で追加します。
 - **チャットによるノード生成**: チャットウィンドウでAIと対話するだけで、その内容が新しい子ノードとして自動的にマインドマップに追加されます。
-- **LLMモデル選択**: ヘッダーのドロップダウンメニューから、タスクに応じて最適なLLMモデルをリアルタイムで切り替え可能（GPT-5, Qwen3, Claude, Gemini等、8種類のモデルに対応）。
+- **LLMモデル選択**: ヘッダーのコンボボックスから、タスクに応じて最適なLLMモデルをリアルタイムで切り替え可能（環境変数 `LLM_MODEL_LIST` でリストをカスタマイズ可能）。自由入力によるモデル指定も可能です。
 - **テキストから自動生成**: 記事、レポート、議事録などの文章を入力すると、AIが内容を解析し、主要トピックと階層構造を持つマインドマップを自動生成します。
 
 ### 便利な機能
@@ -45,7 +45,7 @@ AI機能の利用には OpenRouter API キーが必要です。
 - **状態管理**: Zustand 5.0.6
 - **マインドマップ描画**: React Flow 11.11.4
 - **AI連携**: OpenRouter API
-  - 対応モデル: GPT-5 Mini/Chat/OSS, Qwen3 Next, Claude Haiku/Sonnet 4.5, Gemini 2.5 Pro
+  - 対応モデル: GPT-5 Mini/Chat/OSS, Qwen3 Next, Claude Haiku/Sonnet 4.5, Gemini 2.5 Pro (デフォルト)
 - **Markdown表示**: React Markdown + remark-gfm
 - **アイコン**: Lucide React
 - **ID生成**: nanoid
@@ -66,11 +66,17 @@ LLM_API_KEY="your_api_key_here"
 # (任意) 使用するLLMモデル
 # デフォルトは openai/gpt-5-mini です。
 LLM_MODEL_NAME="openai/gpt-5-mini"
+
+# (任意) ドロップダウンリストに表示するモデルリスト
+# カンマ区切りでモデルIDを指定します。
+# 指定がない場合は、ソースコード内に定義されたデフォルトのリストが使用されます。
+LLM_MODEL_LIST="openai/gpt-4o,anthropic/claude-3.5-sonnet,google/gemini-pro-1.5"
 ```
 
 - `LLM_API_KEY`: AIとの通信に必須です。APIキーを設定してください。
 - `LLM_BASE_URL`: APIのエンドポイントのベースURLを指定します。省略時は OpenRouter が使用されます。
-- `LLM_MODEL_NAME`: 使用する言語モデルを指定します。省略した場合は `openai/gpt-5-mini` が使用されます。アプリ起動後もヘッダーのドロップダウンメニューから動的に変更可能です。
+- `LLM_MODEL_NAME`: 使用する言語モデルを指定します。省略した場合は `openai/gpt-5-mini` が使用されます。アプリ起動後もヘッダーのコンボボックスから動的に変更可能です。
+- `LLM_MODEL_LIST`: モデル選択用ドロップダウンに表示するモデルのリストを指定します。モデルIDをカンマ区切りで記述してください。
 
 ## 🚀 起動方法
 
